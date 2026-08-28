@@ -14,8 +14,17 @@
   function resolveHref(canonicalPath) {
     if (!canonicalPath) return '#';
     const base = basePath === '.' ? '' : (basePath.replace(/\/$/, '') + '/');
-    // Build an absolute URL so navigation never depends on relative ".." parsing.
-    return new URL(base + canonicalPath, location.origin + '/').href;
+    const target = base + canonicalPath;
+    try {
+      // Resolve against the current page URL. Works for http(s) and
+      // file:// alike; location.origin is the literal string "null"
+      // under file:// and would make the URL constructor throw.
+      return new URL(target, location.href).href;
+    } catch (e) {
+      // Environments with a broken or missing URL implementation
+      // (some IDE preview panes) — fall back to the relative path.
+      return target;
+    }
   }
 
   if (!hasSidebar || !navTreeJson) {

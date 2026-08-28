@@ -186,9 +186,27 @@ function walkDir(dir, callback, relativeTo = ROOT) {
   }
 }
 
+// Development-only files inside site/ that must not be copied into dist.
+// Pages only reference runtime assets (styles.css, menu.js, runner.js,
+// theme.js, vendor/); the raw template still containing {{PLACEHOLDERS}}
+// and the build/test scripts would only confuse IDE previews that try
+// to resolve every file under dist as a real page.
+const SITE_DEV_FILES = new Set([
+  'build.js',
+  'serve.js',
+  'template.html',
+]);
+
+function isSiteDevFile(relSlash) {
+  if (!relSlash.startsWith('site/')) return false;
+  const name = relSlash.split('/').pop();
+  return SITE_DEV_FILES.has(name) || /^test-.*\.js$/.test(name);
+}
+
 function copyStaticAssets() {
   walkDir(ROOT, (fullPath, relPath) => {
     if (isMarkdown(fullPath)) return;
+    if (isSiteDevFile(relPath.replace(/\\/g, '/'))) return;
     const ext = path.extname(fullPath).toLowerCase();
     if (['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.css', '.js', '.csv', '.sql', '.py', '.java', '.html'].includes(ext)) {
       copyFile(fullPath, path.join(DIST, relPath));
