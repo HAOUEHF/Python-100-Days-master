@@ -1,0 +1,19 @@
+{
+  "name": "python-100-days-site",
+  "version": "1.0.0",
+  "description": "静态站点生成器：为 Python-100-Days 的代码块添加运行按钮",
+  "private": true,
+  "scripts": {
+    "build": "node build.js",
+    "serve": "node serve.js",
+    "dev": "npm run build && npm run serve"
+  },
+  "dependencies": {
+    "highlight.js": "^11.9.0",
+    "marked": "^9.1.6",
+    "marked-highlight": "^2.0.6"
+  },
+  "devDependencies": {
+    "jsdom": "^21.1.2"
+  }
+}
