@@ -1,7 +1,14 @@
-fix: 增强站点在非标准浏览环境下的健壮性
+fix: 浏览器端 Python 运行支持 input() 键盘输入
 
-- menu.js: 目录链接改为相对当前页面 URL 解析，兼容 file:// 协议；
-  URL 实现异常的 IDE 预览环境下回退为相对路径，避免目录渲染失败
-- build.js: 构建时不再将 site/ 下开发文件（原始模板、构建/服务/
-  测试脚本）复制进 dist，防止含 {{占位符}} 的模板被 IDE 预览
-  误当作真实页面解析导致资源路径报错
+Pyodide 运行于浏览器沙箱，没有标准输入，调用 input() 会抛出
+OSError: [Errno 29] I/O error，导致教程中大量依赖输入的示例无法运行。
+
+- runner.js: Pyodide 初始化后覆盖 builtins.input，改为弹出浏览器
+  对话框（prompt 文字原样显示，如 'num = '），取消输入时抛出
+  EOFError 并给出中文说明
+- runner.js: 同步设置 sys.stdin 兜底（pyodide setStdin），支持
+  直接读取 sys.stdin 的代码
+- runner.js: 代码包含 input() 时在输出区提前显示操作提示，
+  避免新手面对突然弹出的对话框不知所措
+- test-input.js: 新增 9 项 mock 测试覆盖注入、兜底、提示与
+  执行链路，全部通过

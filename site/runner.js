@@ -147,6 +147,7 @@
           },
         });
         pyodide = py;
+        await initPyodideStdio(py);
         return py;
       })();
       // On failure clear the cached promise so the next click can retry,
@@ -158,8 +159,50 @@
     return pyodidePromise;
   }
 
+  // Pyodide runs inside the browser and has no stdin at all: calling
+  // input() raised "OSError: [Errno 29] I/O error". Replace builtins.input
+  // with the browser prompt() dialog — the prompt text from the Python
+  // code (e.g. 'num = ') is shown in the dialog — and wire sys.stdin to
+  // the same source for code that reads it directly (sys.stdin.read()).
+  async function initPyodideStdio(py) {
+    try {
+      await py.runPythonAsync([
+        'import builtins',
+        'from js import window',
+        '',
+        'def _browser_input(prompt=""):',
+        '    result = window.prompt(str(prompt) if prompt else "请输入：")',
+        '    if result is None:',
+        '        raise EOFError("输入已被用户取消")',
+        '    return result',
+        '',
+        'builtins.input = _browser_input',
+      ].join('\n'));
+    } catch (e) {
+      // Non-fatal: input() would just keep raising the original OSError.
+      console.warn('无法覆盖 input():', e);
+    }
+
+    try {
+      if (typeof py.setStdin === 'function') {
+        py.setStdin({
+          // Returning null signals EOF (e.g. user pressed Cancel).
+          stdin: () => window.prompt('请输入一行（点击“取消”表示输入结束）：'),
+        });
+      }
+    } catch (e) {
+      // Older pyodide builds without setStdin: ignore.
+    }
+  }
+
   async function runPython(code, output) {
-    output.innerHTML = '<span class="output-label">输出</span>正在加载 Python 运行环境（首次加载约需几秒）...';
+    // Warn beginners BEFORE the (possibly slow) first load and before
+    // the browser dialog pops up, so they know where to type. The
+    // tutorial examples rely on input() heavily.
+    const needsInput = /\binput\s*\(/.test(code);
+    output.innerHTML = needsInput
+      ? '<span class="output-label">提示</span>代码需要键盘输入：运行时请在弹出的对话框中输入内容后点击“确定”。'
+      : '<span class="output-label">输出</span>正在加载 Python 运行环境（首次加载约需几秒）...';
     const py = await getPyodide();
 
     let stdout = '';
